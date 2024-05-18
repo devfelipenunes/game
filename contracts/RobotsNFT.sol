@@ -10,12 +10,13 @@ import "solady/src/auth/OwnableRoles.sol";
  */
 contract RobotsNFT is ERC721, OwnableRoles {
     uint256 constant minterRole = _ROLE_0;
-    uint256 newRobotId;
+    uint256 _robotIds;
     uint256 public totalSupply;
 
     struct Robot {
         uint8 attack; // value is in [1;10]
         uint8 defence; // value is in [1;10]
+        string tokenURI;
         uint32 readyTime;
     }
 
@@ -38,14 +39,14 @@ contract RobotsNFT is ERC721, OwnableRoles {
         address _to,
         uint8 _attack,
         uint8 _defence,
-        uint32 _readyTime
-    ) external onlyRoles(minterRole) returns (uint256) {
-        _safeMint(_to, newRobotId);
-        robots[newRobotId] = Robot(_attack, _defence, _readyTime);
-        ++totalSupply;
-        unchecked {
-            return ++newRobotId - 1;
-        } // saves gas, no underflow, because '++' is always before '-1'
+        uint32 _readyTime,
+        string memory _tokenURI
+    ) external onlyRoles(minterRole) returns (uint) {
+        uint robotId = ++_robotIds;
+        _safeMint(_to, robotId);
+        robots[robotId] = Robot(_attack, _defence, _tokenURI, _readyTime);
+
+        return robotId;
     }
 
     /**

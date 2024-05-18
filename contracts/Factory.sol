@@ -9,31 +9,15 @@ import "./Utils.sol";
  * @dev To mint a unique robot !!pseudorandomness!! is used
  */
 contract Factory is Utils {
-    function mintRobotWithEth()
-        public
-        payable
-        virtual
-        returns (uint256 robotId)
-    {
+    function mintRobot(
+        string memory tokenURI
+    ) public payable virtual returns (uint256 robotId) {
         if (hasMinted[msg.sender] != 0) revert AlreadyMinted();
-        require(msg.value >= mintingFeeInEth, "Not enough eth to mint!");
-        uint256 dna = _generateRandomDna();
-        robotId = _buildRobot(dna);
 
-        // Return excess eth
-        if (msg.value - mintingFeeInEth > 0) {
-            (bool sent, ) = msg.sender.call{value: msg.value - mintingFeeInEth}(
-                ""
-            );
-            if (!sent) revert FailedEthTransfer();
-        }
-    }
-
-    function mintRobotWithToken() external virtual returns (uint256 robotId) {
-        if (hasMinted[msg.sender] != 0) revert AlreadyMinted();
-        token.transferFrom(msg.sender, address(this), mintingFeeInToken);
         uint256 dna = _generateRandomDna();
-        robotId = _buildRobot(dna);
+        robotId = _buildRobot(dna, tokenURI);
+
+        return robotId;
     }
 
     // Pseudorandomness is used to generate dna
@@ -43,21 +27,13 @@ contract Factory is Utils {
 
     // Last digit of dna is 'attack' and next digit is 'defence'
     function _buildRobot(
-        uint256 dna
+        uint256 dna,
+        string memory tokenURI
     ) internal virtual returns (uint256 robotId) {
         uint8 _attack = uint8(dna % 10) + 1;
         dna = dna / 10;
         uint8 _defence = uint8(dna % 10) + 1;
-        robotId = nft.mint(msg.sender, _attack, _defence, 0);
-        hasMinted[msg.sender] = 1;
+        robotId = nft.mint(msg.sender, _attack, _defence, 0, tokenURI);
         emit robotMintEvent(robotId, _attack, _defence);
-    }
-
-    /**
-     * @dev Have to be here and not in Utils.sol
-     * to be able to call mintRobotWithEth()
-     */
-    receive() external payable {
-        mintRobotWithEth();
     }
 }

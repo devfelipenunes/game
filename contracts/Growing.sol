@@ -27,7 +27,7 @@ contract Growing is Factory {
         // _max10 returns 10 or less
         uint8 newAttack = _max10(attack1 + attack2);
         uint8 newDefence = _max10(defence1 + defence2);
-        robotId = nft.mint(msg.sender, newAttack, newDefence, 0);
+        robotId = nft.mint(msg.sender, newAttack, newDefence, 0, "");
 
         // Burns 2 initial robots and (tokens-Tax)
         nft.burn(robotId1);
@@ -68,7 +68,13 @@ contract Growing is Factory {
         uint8 newAttack = (attack1 + attack2) / 2;
         uint8 newDefence = (defence1 + defence2) / 2;
         uint32 newReadyTime = uint32(block.timestamp) + multiplyingCooldown;
-        robotId = nft.mint(msg.sender, newAttack, newDefence, newReadyTime);
+        robotId = nft.mint(
+            msg.sender,
+            newAttack,
+            newDefence,
+            newReadyTime,
+            "uri"
+        );
 
         nft.updateReadyTime(robotId1, newReadyTime);
         nft.updateReadyTime(robotId2, newReadyTime);
