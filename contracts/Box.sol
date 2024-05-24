@@ -1,14 +1,21 @@
-//SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
 import "./Utils.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
-import "chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBase.sol";
+// import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract Box is ERC1155, VRFConsumerBase, Utils {
+
+contract Box is ERC1155, Utils {
     uint256 public deployedAt;
     uint256 public currentBoxMinted;
+
+    enum TYPE {
+        normal,
+        lendario,
+        epico
+    }
 
     enum BOX_RARITY {
         common,
@@ -20,6 +27,17 @@ contract Box is ERC1155, VRFConsumerBase, Utils {
         not_used,
         used
     }
+
+    enum RARITY {
+        common,
+        epic,
+        legendary
+    }
+
+    mapping(bytes32 => uint) public requestIdToShinobiId;
+    mapping(bytes32 => uint) public requestIdToBoxId;
+    bytes32 internal keyHash;
+    uint256 internal fee;
 
     event BoxMinted(
         address indexed owner,
@@ -48,9 +66,18 @@ contract Box is ERC1155, VRFConsumerBase, Utils {
     mapping(uint256 => BOX_STATUS) public BoxStatus;
     mapping(bytes32 => address) public RequestIdToOwner;
 
-    AggregatorV3Interface internal priceFeed;
+    // AggregatorV3Interface internal priceFeed;
 
-    constructor() ERC1155("") {
+    constructor(
+        address vrfCoordinator,
+        address link,
+        bytes32 _keyHash,
+        uint256 _fee,
+        string memory uri
+    ) ERC1155("") {
+        keyHash = _keyHash;
+        fee = _fee;
+
         BoxPrice[BOX_RARITY.common] = 50;
         BoxPrice[BOX_RARITY.epic] = 100;
         BoxPrice[BOX_RARITY.legendary] = 150;
@@ -63,10 +90,11 @@ contract Box is ERC1155, VRFConsumerBase, Utils {
     }
 
     function getBoxPrice(uint256 _price) public view returns (uint256) {
-        (, int256 price, , , ) = priceFeed.lastetRoundData();
+        // (, int256 price, , , ) = priceFeed.latestRoundData();
 
-        uint256 newPrice = uint256(price * 10 ** 10);
-        return ((_price * 10 ** 18) / newPrice);
+        // uint256 newPrice = uint256(price * 10**10);
+        uint256 newPrice = uint256(1 * 10**10);
+        return ((_price * 10**18) / newPrice);
     }
 
     function mintBox(uint256 _boxRarityIndex) public payable {
@@ -95,89 +123,59 @@ contract Box is ERC1155, VRFConsumerBase, Utils {
         );
     }
 
-    function openBox(uint _boxId) public {
-        BOX memory box = boxes[_boxId];
-        bytes32 requestId = requestRandomness(keyHash, fee);
-        BoxRarityOfRequestId[requestId] = box.box_rarity;
-        RequestIdToOwner[requestId] = msg.sender;
-        requestIdToShinobiId[requestId] = _boxId;
-        requestIdToBoxId[requestId] = _boxId;
-        emit openBoxRequested(requestId);
-    }
+    // function openBox(uint _boxId, bytes32 requestId) public {
+    //     BOX memory box = boxes[_boxId];
+    //     // bytes32 requestId = requestRandomness(keyHash, fee);
+    //     BoxRarityOfRequestId[requestId] = box.box_rarity;
+    //     RequestIdToOwner[requestId] = msg.sender;
+    //     requestIdToShinobiId[requestId] = _boxId;
+    //     requestIdToBoxId[requestId] = _boxId;
+    //     emit openBoxRequested(requestId);
+    // }
 
-    function fulfillRandomness(
-        bytes32 requestId,
-        uint256 randomness
-    ) internal override {
+    function openBox(bytes32 requestId, uint256 randomness) internal override {
         address owner = RequestIdToOwner[requestId];
-        uint _boxId = box.mintBox(requestId);
+        uint _boxId = requestIdToBoxId[requestId];
         BOX storage box = boxes[_boxId];
-        
+
         uint256 chancePercentage = randomness % 100;
         RARITY rarity;
 
         if (box.box_rarity == BOX_RARITY.common) {
             if (chancePercentage > 41) {
-                shinobiRarity = RARITY.academy_Student;
-            } else if (chancePercentage > 21 && chancePercentage <= 41) {
-                shinobiRarity = SHINOBI_RARITY.genin;
-            } else if (chancePercentage > 11 && chancePercentage <= 21) {
-                shinobiRarity = SHINOBI_RARITY.chunin;
-            } else if (chancePercentage > 4 && chancePercentage <= 11) {
-                shinobiRarity = SHINOBI_RARITY.tokubetsu_jonin;
-            } else if (chancePercentage > 1 && chancePercentage <= 4) {
-                shinobiRarity = SHINOBI_RARITY.jonin;
-            } else if (chancePercentage == 1) {
-                shinobiRarity = SHINOBI_RARITY.kage;
+                rarity = RARITY.common;
+            } else if (chancePercentage > 21) {
+                rarity = RARITY.epic;
+            } else {
+                rarity = RARITY.legendary;
             }
         } else if (box.box_rarity == BOX_RARITY.epic) {
             if (chancePercentage > 64) {
-                shinobiRarity = SHINOBI_RARITY.academy_Student;
-            } else if (chancePercentage > 39 && chancePercentage <= 64) {
-                shinobiRarity = SHINOBI_RARITY.genin;
-            } else if (chancePercentage > 19 && chancePercentage <= 39) {
-                shinobiRarity = SHINOBI_RARITY.chunin;
-            } else if (chancePercentage > 4 && chancePercentage <= 19) {
-                shinobiRarity = SHINOBI_RARITY.tokubetsu_jonin;
-            } else if (chancePercentage > 1 && chancePercentage <= 4) {
-                shinobiRarity = SHINOBI_RARITY.jonin;
-            } else if (chancePercentage == 1) {
-                shinobiRarity = SHINOBI_RARITY.kage;
+                rarity = RARITY.common;
+            } else if (chancePercentage > 39) {
+                rarity = RARITY.epic;
+            } else {
+                rarity = RARITY.legendary;
             }
         } else if (box.box_rarity == BOX_RARITY.legendary) {
             if (chancePercentage > 83) {
-                shinobiRarity = SHINOBI_RARITY.genin;
-            } else if (chancePercentage > 43 && chancePercentage <= 83) {
-                shinobiRarity = SHINOBI_RARITY.chunin;
-            } else if (chancePercentage > 13 && chancePercentage <= 43) {
-                shinobiRarity = SHINOBI_RARITY.tokubetsu_jonin;
-            } else if (chancePercentage > 5 && chancePercentage <= 13) {
-                shinobiRarity = SHINOBI_RARITY.jonin;
-            } else if (chancePercentage == 1 && chancePercentage <= 5) {
-                shinobiRarity = SHINOBI_RARITY.kage;
+                rarity = RARITY.common;
+            } else if (chancePercentage > 43) {
+                rarity = RARITY.epic;
+            } else {
+                rarity = RARITY.legendary;
             }
         }
 
-
-        nft.mint(msg.sender,  robotId,
-            attack,
-            defence,
-            tokenURI,
-            readyTime,
-            power,
-            rarity
-            );
-        
-        robots.push(
-            ROBOT({
-                id: boxId,
-                attack: 1,
-                defence: 1,
-                tokenURI: "",
-                readyTime: block.timestamp,
-                power: ROBOT_TYPE.lendario,
-                rarity: RARITY.common
-            });
-        );
+        nft.mint(msg.sender, 1, 3, 4, "URI", 2, 1, rarity);
+        RobotsNFT.robots.push(RobotsNFT.ROBOT({
+            id: 1,
+            attack: 1,
+            defence: 1,
+            tokenURI: "",
+            readyTime: block.timestamp,
+            power: TYPE.normal,
+            rarity: rarity
+        }));
     }
 }
