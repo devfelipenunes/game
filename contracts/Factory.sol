@@ -16,8 +16,6 @@ contract Factory is Utils {
 
         uint256 dna = _generateRandomDna();
         robotId = _buildRobot(dna, tokenURI);
-
-        return robotId;
     }
 
     // Pseudorandomness is used to generate dna

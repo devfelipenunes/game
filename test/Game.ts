@@ -6,7 +6,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 
-describe("Lock", function () {
+describe("Robts", function () {
   async function deploy() {
     const [owner, addr1, addr2] = await hre.ethers.getSigners();
 
@@ -56,21 +56,89 @@ describe("Lock", function () {
     };
   }
 
+  function findEventArgs(logs: any, eventName: any) {
+    let _event = null;
+    for (const event of logs) {
+      if (event.fragment && event.fragment.name == eventName) {
+        _event = event.args;
+      }
+    }
+    return _event;
+  }
+
   it("Should create an arena and enter a fight", async function () {
     const { robotsNFT, owner, addr2, addr1, factory, fighting, rewardToken } =
       await loadFixture(deploy);
 
-    // Mint reward tokens to addr1 and addr2 for testing
-    const rewardAmount = ethers.parseEther("10"); // Adjust the amount as needed
-    await rewardToken.connect(owner).transfer(addr1.address, rewardAmount);
-    await rewardToken.connect(owner).transfer(addr2.address, rewardAmount);
+    const rewardAmount = ethers.parseEther("10");
 
-    // Mint robots for addr1 and addr2
-    const mintingFeeInEth = await factory.mintingFeeInEth();
-    const res = await factory.mintRobot("Robot");
-    await res.wait();
-    const robots = await robotsNFT.robots(1);
+    await rewardToken.connect(owner).transfer(addr1.getAddress(), rewardAmount);
 
-    console.log(`Minted robots to ${robots}`);
+    await factory.mintRobot("Ell Brabo");
+    const robots1 = await robotsNFT.robots(1);
+
+    const ownerRobot1 = await robotsNFT.ownerOf(1);
+    await factory.connect(addr1).mintRobot("Ell Brabinho");
+    const robots2 = await robotsNFT.robots(2);
+    const ownerRobot2 = await robotsNFT.ownerOf(2);
+
+    console.log(`
+    LutadorID ${robots1[0]}
+    Nome: ${robots1[3]}
+    Atack: ${robots1[1]}
+    Defesa: ${robots1[2]}
+    Criador: ${ownerRobot1}
+    `);
+    console.log(`
+    LutadorId ${robots2[0]}
+    Nome: ${robots2[3]}
+    Atack: ${robots2[1]}
+    Defesa: ${robots2[2]}
+    Criador: ${ownerRobot2}
+    `);
+
+    console.log(`
+    Vai começar a luta entre ${robots2[3]} x ${robots1[3]}
+    `);
+
+    //
+    await robotsNFT.approve(fighting.getAddress(), 1);
+    await rewardToken.approve(fighting.getAddress(), ethers.parseEther("1"));
+    const arena = await fighting.createArena(1);
+    const arenaReceipt = await arena.wait();
+    const resultArena = findEventArgs(arenaReceipt, "createArenaEvent");
+    console.log(`
+    Arena: ${resultArena[2]} criada com sucesso!!
+    `);
+
+    await robotsNFT.connect(addr1).approve(fighting.getAddress(), 2);
+    await rewardToken
+      .connect(addr1)
+      .approve(fighting.getAddress(), ethers.parseEther("1"));
+    const arena2 = await fighting.connect(addr1).createArena(2);
+    const arenaReceipt2 = await arena2.wait();
+    const resultArena2 = findEventArgs(arenaReceipt2, "createArenaEvent");
+
+    console.log(`
+    Arena: ${resultArena2[2]} criada com sucesso!!
+    `);
+
+    const arenas = await fighting.fetchArenas();
+
+    console.log(arenas);
+
+    await rewardToken
+      .connect(addr1)
+      .approve(fighting.getAddress(), ethers.parseEther("1"));
+
+    const fight = await fighting.connect(addr1).enterArena(0, 2);
+    console.log(`O ${robots2[3]} entrou na arena`);
+    const fightReceipt = await fight.wait();
+    const resultFight = await findEventArgs(fightReceipt, "fightingEvent");
+    const winner = await robotsNFT.robots(resultFight[1]);
+    console.log(`
+      O Vencedor foi ${winner[3]}!
+      `);
+    console.log(await rewardToken.balanceOf(owner));
   });
 });

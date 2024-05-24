@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "./RewardToken.sol";
 import "./RobotsNFT.sol";
+import "./Box.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -35,6 +36,7 @@ contract Utils is UUPSUpgradeable, OwnableUpgradeable, IERC721Receiver {
 
     RewardToken public token;
     RobotsNFT public nft;
+    Box public box;
 
     struct Auction {
         uint32 endTime;
@@ -51,7 +53,6 @@ contract Utils is UUPSUpgradeable, OwnableUpgradeable, IERC721Receiver {
     mapping(address => uint256) public hasMinted; // minter => 0 or 1
     mapping(uint256 => uint256) public market; // robotId => price
     mapping(uint256 => Auction) public auctions; // robotId => Auction
-    mapping(uint256 => Arena) arenas; // arenaId => Arena
     mapping(uint256 => address) oldOwner; // robotId => old owner of robot
 
     event combineRobotsEvent(
@@ -148,11 +149,16 @@ contract Utils is UUPSUpgradeable, OwnableUpgradeable, IERC721Receiver {
     error SomeoneIsFighting(uint128 arenaId);
 
     // Initialize proxy, more info in UUPSUpgradeable.sol
-    function initialize(address _token, address _nft) external initializer {
+    function initialize(
+        address _token,
+        address _nft,
+        address _box
+    ) external initializer {
         // __Ownable_init();
         __UUPSUpgradeable_init();
         token = RewardToken(_token);
         nft = RobotsNFT(_nft);
+        box = Box(_box);
         marketTax = 1;
         auctionTax = 1;
         fightingTax = 1;

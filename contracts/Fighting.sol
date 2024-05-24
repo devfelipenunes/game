@@ -7,6 +7,22 @@ import "./RobotMarket.sol";
  * @title A contract for fighting with robots
  */
 contract Fighting is RobotMarket {
+    mapping(uint256 => Arena) public arenas;
+
+    function fetchArenas() public view returns (Arena[] memory) {
+        uint totalItemCount = newArenaId;
+
+        Arena[] memory items = new Arena[](totalItemCount);
+        uint currentIndex = 0;
+
+        for (uint i = 1; i <= totalItemCount; ++i) {
+            items[currentIndex] = arenas[i];
+            ++currentIndex;
+        }
+
+        return items;
+    }
+
     /**
      * Create an arena by paying 'fightingFee'
      * @notice number of arenas is not limited
@@ -21,9 +37,7 @@ contract Fighting is RobotMarket {
         arenas[newArenaId] = Arena(1, 0, uint128(robotId));
         emit createArenaEvent(owner, robotId, newArenaId);
         ++newArenaId;
-        unchecked {
-            return newArenaId - 1;
-        }
+        return newArenaId;
     }
 
     function removeArena(uint128 arenaId) external virtual {

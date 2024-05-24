@@ -13,11 +13,26 @@ contract RobotsNFT is ERC721, OwnableRoles {
     uint256 _robotIds;
     uint256 public totalSupply;
 
+    enum TYPE {
+        normal,
+        lendario,
+        epico
+    }
+
+    enum RARITY {
+        common,
+        epic,
+        legendary
+    }
+
     struct Robot {
+        uint256 id;
         uint8 attack; // value is in [1;10]
         uint8 defence; // value is in [1;10]
         string tokenURI;
         uint32 readyTime;
+        TYPE power;
+        RARITY rarity;
     }
 
     // robotId => Robot
@@ -40,11 +55,21 @@ contract RobotsNFT is ERC721, OwnableRoles {
         uint8 _attack,
         uint8 _defence,
         uint32 _readyTime,
-        string memory _tokenURI
+        string memory _tokenURI,
+        TYPE _power,
+        RARITY _rarity
     ) external onlyRoles(minterRole) returns (uint) {
         uint robotId = ++_robotIds;
         _safeMint(_to, robotId);
-        robots[robotId] = Robot(_attack, _defence, _tokenURI, _readyTime);
+        robots[robotId] = Robot(
+            robotId,
+            _attack,
+            _defence,
+            _tokenURI,
+            _readyTime,
+            _power,
+            _rarity
+        );
 
         return robotId;
     }
